@@ -1,5 +1,8 @@
 'use strict';
 
+// I'm not putting this stuff in self-invoking-function - maybe you want
+// to play with it in the console ;)
+
 // region Generic
 
 function PubSub() {
@@ -52,7 +55,7 @@ PubSub.prototype.trigger = function trigger(event) {
     this.events[event].forEach(listener => {
         listener.apply(this, args);
     });
-    
+
     return this;
 };
 
@@ -66,9 +69,13 @@ function flickrApiRequest(params, httpMethod) {
         .toPairs()
         .map(p => encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]))
         .join('&');
-    
-    xhr.open(httpMethod || 'GET', 'https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&' + serializedParams);
-    
+
+    xhr.open(
+        httpMethod || 'GET',
+        'https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&' +
+            serializedParams
+    );
+
     let promise = new Promise((resolve, reject) => {
         xhr.addEventListener('load', function onLoad() {
             resolve(JSON.parse(this.responseText), this.status, this);
@@ -77,19 +84,19 @@ function flickrApiRequest(params, httpMethod) {
             reject(this);
         });
     });
-    
+
     xhr.send();
     return promise;
 }
 
 function FlickrSearch(phrase, pageSize) {
     PubSub.call(this);
-    
+
     if (pageSize < 5) {
         throw new Error('The minimum size of page is 5.');
     }
 
-    let iPos = 0;
+    let idx = 0;
 
     this.status = null;
     this.cache = [];
@@ -103,6 +110,7 @@ function FlickrSearch(phrase, pageSize) {
 
         this.status = FlickrSearch.statuses.PENDING;
         this.trigger(FlickrSearch.events.PENDING, nextPageNumber);
+
         flickrApiRequest({
             method: 'flickr.photos.search',
             api_key: 'ee9e060249cfbaad0a7799fd4fc6bf73',
@@ -124,21 +132,21 @@ function FlickrSearch(phrase, pageSize) {
 
     this.next = function next() {
         if (
-            this.cache.length - iPos - 1 <= Math.floor(0.25 * pageSize) &&
+            this.cache.length - idx - 1 <= Math.floor(0.25 * pageSize) &&
             this.status !== FlickrSearch.statuses.PENDING
         ) {
             this.loadMore();
         }
 
-        return (iPos < this.cache.length - 1) ? this.cache[++iPos] : null;
+        return (idx < this.cache.length - 1) ? this.cache[++idx] : null;
     };
 
     this.prev = function prev() {
-        return (iPos > 0) ? this.cache[--iPos] : null;
+        return (idx > 0) ? this.cache[--idx] : null;
     };
 
-    this.current = function current() {
-        return this.cache[iPos];
+    this.current = function current(relative) {
+        return this.cache[idx + (relative || 0)];
     };
 
     this.loadMore();
@@ -185,41 +193,60 @@ function Gallery(settings) {
     }
 
     function stylingFunc(el, i) {
-        let l = this.frames.length;
-        let step = 1 / l * 2;
+        let framesLength = this.frames.length;
+        let step = 1 / framesLength * 2;
+        let activeIdx = Math.floor(framesLength / 2);
         let shift;
+        let style;
 
         el.classList.remove('active');
 
         if (i === 0) {
-            el.style.left = 0;
-            el.style.transform = 'rotateY(30deg) translate3d(-100%, 0, 0) scale(' + step + ')';
-            el.style.opacity = 0;
-            el.style.zIndex = '';
-        } else if (i === l - 1) {
-            el.style.left = '100%';
-            el.style.transform = 'rotateY(-30deg) translate3d(0, 0, 0) scale(' + step + ')';
-            el.style.opacity = 0;
-            el.style.zIndex = -l;
-        } else if (i < Math.floor(l / 2)) {
+            style = {
+                left: 0,
+                transform: `rotateY(30deg) translate3d(-100%, 0, 0) scale(${step})`,
+                opacity: 0,
+                zIndex: '',
+                '-webkit-filter': `brightness(${step})`
+            };
+        } else if (i === framesLength - 1) {
+            style = {
+                left: '100%',
+                transform: `rotateY(-30deg) translate3d(0, 0, 0) scale(${step})`,
+                opacity: 0,
+                zIndex: -framesLength,
+                '-webkit-filter': `brightness(${step})`
+            };
+        } else if (i < activeIdx) {
             shift = step * (i + 1);
-            el.style.left = '0';
-            el.style.transform = 'rotateY(30deg) translate3d(calc(-20% + ' + (25 * shift) + 'vw), 0, 0) scale(' + shift + ')';
-            el.style.opacity = 1;
-            el.style.zIndex = '';
-        } else if (i > Math.floor(l / 2)) {
-            shift = step * (l - i);
-            el.style.left = 'calc(100% - ' + el.offsetWidth + 'px)';
-            el.style.transform = 'rotateY(-30deg) translate3d(calc(20% - ' + (25 * shift) + 'vw), 0, 0) scale(' + shift + ')';
-            el.style.opacity = 1;
-            el.style.zIndex = (Math.floor(l / 2) - i);
+            style = {
+                left: 0,
+                transform: `rotateY(30deg) translate3d(calc(-20% + ${25 * shift}vw), 0, 0) scale(${shift})`,
+                opacity: 1,
+                zIndex: '',
+                '-webkit-filter': `brightness(${shift})`
+            };
+        } else if (i > activeIdx) {
+            shift = step * (framesLength - i);
+            style = {
+                left: `calc(100% - ${el.offsetWidth}px)`,
+                transform: `rotateY(-30deg) translate3d(calc(20% - ${25 * shift}vw), 0, 0) scale(${shift})`,
+                opacity: 1,
+                zIndex: (activeIdx - i),
+                '-webkit-filter': `brightness(${shift})`
+            }
         } else {
-            el.style.left = '50%';
-            el.style.transform = 'rotateY(0) translate3d(-50%, 0, 0)';
-            el.style.opacity = 1;
-            el.style.zIndex = '';
+            style = {
+                left: '50%',
+                transform: 'rotateY(0) translate3d(-50%, 0, 0)',
+                opacity: 1,
+                zIndex: '',
+                '-webkit-filter': ''
+            };
             el.classList.add('active');
         }
+
+        _.assign(el.style, style);
     }
 
     this.init = function init(imgSources) {
@@ -230,19 +257,19 @@ function Gallery(settings) {
         for (let i = 0; i < settings.length; i++) {
             let frame = document.createElement('div');
             let img = document.createElement('img');
+
             frame.classList.add('frame');
             frame.addEventListener('click', onFrameClick.bind(this));
-            
+
             if (i >= settings.length - imgSources.length) {
-                img.src = imgSources[settings.length - i - 1];
+                img.src = imgSources[imgSources.length - settings.length + i];
             } else {
-                frame.classList.add('mock');
+                frame.classList.add('placeholder');
             }
-            
+
             frame.appendChild(img);
             docFragment.appendChild(frame);
             this.frames.push(frame);
-            
         }
 
         this.gallery.appendChild(docFragment);
@@ -250,16 +277,17 @@ function Gallery(settings) {
     };
 
     this.calcPosition = function calcPosition() {
-        this.frames.forEach(settings.stylingFunc || stylingFunc.bind(this));
+        this.frames.forEach((
+            _.isFunction(settings.stylingFunc) ? settings.stylingFunc : stylingFunc
+        ).bind(this));
     };
 
     this.go = function go(direction, url) {
         let active = this.gallery.querySelector('.active');
 
-        if (
-            !url &&
-            (active.nextSibling.classList.contains('mock') && direction >= 0 ||
-            active.previousSibling.classList.contains('mock') && direction < 0)
+        if (!url &&
+            (active.nextSibling.classList.contains('placeholder') && direction > 0 ||
+            active.previousSibling.classList.contains('placeholder') && direction < 0)
         ) {
             return;
         }
@@ -269,21 +297,21 @@ function Gallery(settings) {
 
         this.gallery.removeChild(frame);
         frame.removeChild(img);
-        frame.classList.remove('mock');
+        frame.classList.remove('placeholder');
         img = document.createElement('img');
         frame.appendChild(img);
 
         if (url) {
             img.src = url;
         } else {
-            frame.classList.add('mock');
+            frame.classList.add('placeholder');
             img.src = '';
         }
 
-        if (direction >= 0) {
+        if (direction > 0) {
             this.gallery.appendChild(frame);
             this.frames.push(frame);
-        } else {
+        } else if (direction < 0) {
             this.gallery.insertBefore(frame, this.frames[0]);
             this.frames.unshift(frame);
         }
@@ -308,11 +336,12 @@ document.querySelector('#flickr-search').addEventListener('submit', event => {
     let galleryLength = parseInt(event.currentTarget.querySelector('[name="galleryLength"]').value, 10);
     let flickrSearch;
     let gallery;
-    
+
     if (phrase.value === '') {
+        alert('You must write something ;)');
         return;
     }
-    
+
     try {
         flickrSearch = new FlickrSearch(phrase.value, galleryLength);
         gallery = new Gallery({
@@ -323,18 +352,20 @@ document.querySelector('#flickr-search').addEventListener('submit', event => {
 
                 if (clickedIdx > activeIdx) {
                     photo = flickrSearch.next();
-                    
+
                     if (photo) {
                         this.next(constructPhotoUrl(photo));
                     } else if (flickrSearch.status !== FlickrSearch.statuses.PENDING) {
                         this.next();
                     }
                 } else if (clickedIdx < activeIdx) {
-                    photo = flickrSearch.prev();
-                    
+                    photo = flickrSearch.current(-galleryLength);
+
                     if (photo) {
+                        flickrSearch.prev();
                         this.prev(constructPhotoUrl(photo));
                     } else if (flickrSearch.status !== FlickrSearch.statuses.PENDING) {
+                        flickrSearch.prev();
                         this.prev();
                     }
                 }
@@ -348,11 +379,11 @@ document.querySelector('#flickr-search').addEventListener('submit', event => {
     flickrSearch.once(FlickrSearch.events.READY, () => {
         let photoSetLength = Math.floor(galleryLength / 2);
         let photoSet = [constructPhotoUrl(flickrSearch.current())];
-                
+
         for (let i = 0; i < photoSetLength; i++) {
             photoSet.push(constructPhotoUrl(flickrSearch.next()));
         }
-        
+
         gallery.init(photoSet);
     });
 });

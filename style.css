@@ -1,4 +1,5 @@
 body {
+    margin: 0;
     background: linear-gradient(to top, #777, #000) no-repeat center center fixed;
     background-size: cover;
 }
@@ -8,10 +9,10 @@ body {
     height: calc(240px + 2 * 5px + 10px);
     margin: 15px 0;
     overflow: hidden;
-    transition: scale 0.5s ease-in-out;
+    transition: opacity 0.5s ease-in-out;
 }
 .gallery:empty {
-    transform: scale(0);
+    opacity: 0;
 }
 .frame {
     position: absolute;
@@ -20,7 +21,7 @@ body {
     background: url('https://upload.wikimedia.org/wikipedia/commons/b/b9/Youtube_loading_symbol_1_(wobbly).gif') #000 no-repeat center center;
     background-size: 10%;
     border: solid 5px #fff;
-    transition: all 0.5s ease-in-out;
+    transition: all 0.5s ease-in-out, z-index 1ms;
     transform-style: preserve-3d;
     box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.2);
     overflow: hidden;
@@ -35,14 +36,13 @@ body {
     top: 50%;
     transform: translateY(-50%);
 }
-.frame.mock {
+.frame.placeholder {
     display: none;
 }
 #flickr-search {
     text-align: center;
     margin: 30px;
 }
-
 #flickr-search input {
     font-size: 18px;
     font-weight: normal;
@@ -52,8 +52,9 @@ body {
     border-radius: 0.2em;
     padding: 0.3em 0.5em;
     outline: none;
+    transition: 0.2s all;
 }
-#flickr-search input[type="text"]:focus {
+#flickr-search input:focus {
     border-color: #7CB2D8;
     background: #333;
 }
