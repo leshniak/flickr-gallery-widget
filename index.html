@@ -1,0 +1,19 @@
+<DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flickr Gallery</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.11.2/lodash.min.js"></script>
+</head>
+<body>
+    <form id="flickr-search">
+        <input type="text" name="phrase" placeholder='Put a phrase here'>
+        <input type="number" name="galleryLength" step="2" min="5" max="21" value="15">
+        <input type="submit" value="Search">
+    </form>
+    <div class="gallery"></div>
+    <script src="main.js"></script>
+</body>
+</html>
